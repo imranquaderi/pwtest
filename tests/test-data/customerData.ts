@@ -1,5 +1,6 @@
 export const customerData = {
-  firstName: 'John',
-  lastName: 'Doe',
-  postCode: '12345',
+    firstName: 'Imran',
+    lastName: 'Quaderi',
+    postCode: '12345',
+    currency: 'Dollar'
 };

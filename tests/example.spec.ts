@@ -1,170 +1,101 @@
 import { test, expect } from '@playwright/test';
 import { customerData } from './test-data/customerData';
+import {
+  LoginPage,
+  BankManagerPage,
+  AddCustomerPage,
+  OpenAccountPage,
+  CustomerLoginPage,
+  AccountPage,
+} from './pages';
 
 const bankingLoginUrl =
   'https://www.way2automation.com/angularjs-protractor/banking/#/login';
 
-
-//Launch the banking application URL successfully.
+test.describe('Banking Application', () => {
   test('Launch banking application successfully', async ({ page }) => {
-  await page.goto(bankingLoginUrl);
-
-  await expect(page).toHaveURL(
-    /way2automation\.com\/angularjs-protractor\/banking\/#\/login/
-  );
-
-  await expect(
-    page.getByRole('button', { name: 'Bank Manager Login' })
-  ).toBeVisible();
-});
-
-//Navigate to the Bank Manager Login section.
-test('Navigate to Bank Manager Login', async ({ page }) => {
-  await page.goto(bankingLoginUrl);
-
-  await page.getByRole('button', { name: 'Bank Manager Login' }).click();
-
-  await expect(page).toHaveURL(/manager/);
-});
-
-//Add a new customer with valid customer details.
-test('Add a new customer', async ({ page }) => {
-  await page.goto(bankingLoginUrl);
-
-  await page.getByRole('button', { name: 'Bank Manager Login' }).click();
-  await page.getByRole('button', { name: 'Add Customer' }).click();
-
-  await page.getByPlaceholder('First Name').fill(customerData.firstName);
-  await page.getByPlaceholder('Last Name').fill(customerData.lastName);
-  await page.getByPlaceholder('Post Code').fill(customerData.postCode);
-
-  page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('Customer added successfully');
-    await dialog.accept();
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await loginPage.expectBankManagerLoginVisible();
   });
 
-  await page
-    .getByRole('form')
-    .getByRole('button', { name: 'Add Customer' })
-    .click();
-});
+  test('Navigate to Bank Manager Login', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const bankManagerPage = new BankManagerPage(page);
 
-
-test('Open an account for the newly added customer', async ({ page }) => {
-  // Launch banking application
-  await page.goto(bankingLoginUrl);
-
-  // Navigate to Bank Manager Login
-  await page.getByRole('button', { name: 'Bank Manager Login' }).click();
-
-  // Navigate to Add Customer
-  await page.getByRole('button', { name: 'Add Customer' }).click();
-
-  // Enter customer details
-  await page.getByPlaceholder('First Name').fill(customerData.firstName);
-  await page.getByPlaceholder('Last Name').fill(customerData.lastName);
-  await page.getByPlaceholder('Post Code').fill(customerData.postCode);
-
-  // Handle customer creation dialog (using page.once like the working test)
-  const customerDialogPromise = page.waitForEvent('dialog');
-  page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('Customer added successfully');
-    await dialog.accept();
+    await loginPage.goto();
+    await loginPage.clickBankManagerLogin();
+    await bankManagerPage.expectUrl();
   });
 
-  // Add customer
-  await page.getByRole('form').getByRole('button', { name: 'Add Customer' }).click();
+  test('Add a new customer', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const bankManagerPage = new BankManagerPage(page);
+    const addCustomerPage = new AddCustomerPage(page);
 
-  // Wait for dialog to complete
-  await customerDialogPromise;
+    await loginPage.goto();
+    await loginPage.clickBankManagerLogin();
+    await bankManagerPage.clickAddCustomer();
 
-  // Navigate to Open Account
-  await page.getByRole('button', { name: 'Open Account' }).click();
-
-  // Verify Open Account section
-  await expect(page.locator('#userSelect')).toBeVisible();
-
-  // Select newly created customer
-  await page.locator('#userSelect').selectOption({
-    label: `${customerData.firstName} ${customerData.lastName}`,
+    await addCustomerPage.fillCustomerDetails(customerData);
+    await addCustomerPage.submit();
   });
 
-  // Select currency
-  await page.locator('#currency').selectOption({ label: 'Dollar' });
+  test('Open an account for the newly added customer', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const bankManagerPage = new BankManagerPage(page);
+    const addCustomerPage = new AddCustomerPage(page);
+    const openAccountPage = new OpenAccountPage(page);
 
-  // Handle account creation dialog
-  const accountDialogPromise = page.waitForEvent('dialog');
-  page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('Account created successfully');
-    await dialog.accept();
+    await loginPage.goto();
+    await loginPage.clickBankManagerLogin();
+    await bankManagerPage.clickAddCustomer();
+
+    await addCustomerPage.fillCustomerDetails(customerData);
+    await addCustomerPage.submit();
+
+    await bankManagerPage.clickOpenAccount();
+    await openAccountPage.expectVisible();
+
+    const fullName = `${customerData.firstName} ${customerData.lastName}`;
+    await openAccountPage.selectCustomer(fullName);
+    await openAccountPage.selectCurrency('Dollar');
+    await openAccountPage.submit();
   });
 
-  // Create account
-  await page.getByRole('form').getByRole('button', { name: 'Process' }).click();
+  test('Navigate to Customer Login', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const customerLoginPage = new CustomerLoginPage(page);
 
-  // Wait for dialog to complete
-  await accountDialogPromise;
-});
-
-test('Navigate to Customer Login', async ({ page }) => {
-
-  // Launch banking application
-  await page.goto(bankingLoginUrl);
-
-  // Click Customer Login
-  await page.getByRole('button', {
-    name: 'Customer Login'
-  }).click();
-
-  // Verify URL
-  await expect(page).toHaveURL(/customer/);
-
-  // Verify Customer Login section
-  await expect(
-    page.locator('#userSelect')
-  ).toBeVisible();
-
-});
-
-test('Select the created customer and verify successful login', async ({ page }) => {
-  // First, create the customer via Bank Manager
-  await page.goto(bankingLoginUrl);
-  await page.getByRole('button', { name: 'Bank Manager Login' }).click();
-  await page.getByRole('button', { name: 'Add Customer' }).click();
-
-  await page.getByPlaceholder('First Name').fill(customerData.firstName);
-  await page.getByPlaceholder('Last Name').fill(customerData.lastName);
-  await page.getByPlaceholder('Post Code').fill(customerData.postCode);
-
-  const customerDialogPromise = page.waitForEvent('dialog');
-  page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('Customer added successfully');
-    await dialog.accept();
+    await loginPage.goto();
+    await loginPage.clickCustomerLogin();
+    await customerLoginPage.expectUrl();
+    await customerLoginPage.expectVisible();
   });
 
-  await page.getByRole('form').getByRole('button', { name: 'Add Customer' }).click();
-  await customerDialogPromise;
+  test('Select the created customer and verify successful login', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const bankManagerPage = new BankManagerPage(page);
+    const addCustomerPage = new AddCustomerPage(page);
+    const customerLoginPage = new CustomerLoginPage(page);
+    const accountPage = new AccountPage(page);
 
-  // Now navigate to Customer Login
-  await page.goto(bankingLoginUrl);
-  await page.getByRole('button', { name: 'Customer Login' }).click();
+    await loginPage.goto();
+    await loginPage.clickBankManagerLogin();
+    await bankManagerPage.clickAddCustomer();
 
-  // Verify Customer Login page
-  await expect(page).toHaveURL(/customer/);
+    await addCustomerPage.fillCustomerDetails(customerData);
+    await addCustomerPage.submit();
 
-  // Select the created customer
-  await page.locator('#userSelect').selectOption({
-    label: `${customerData.firstName} ${customerData.lastName}`,
+    await loginPage.goto();
+    await loginPage.clickCustomerLogin();
+    await customerLoginPage.expectUrl();
+
+    const fullName = `${customerData.firstName} ${customerData.lastName}`;
+    await customerLoginPage.selectCustomer(fullName);
+    await customerLoginPage.clickLogin();
+
+    await accountPage.expectUrl();
+    await accountPage.expectCustomerNameVisible(fullName);
   });
-
-  // Click Login
-  await page.getByRole('button', { name: 'Login' }).click();
-
-  // Verify successful login
-  await expect(page).toHaveURL(/account/);
-
-  // Verify customer name is displayed
-  await expect(
-    page.getByText(`${customerData.firstName} ${customerData.lastName}`)
-  ).toBeVisible();
 });
